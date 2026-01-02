@@ -9,6 +9,8 @@ export {
   ProjectRole,
   WorkspaceRole,
   FavoriteType,
+  CustomFieldType,
+  DependencyType,
 } from '@prisma/client';
 
 // Export model types
@@ -23,4 +25,15 @@ export type {
   Task,
   Favorite,
   RecentItem,
+  Label,
+  TaskLabel,
+  CustomField,
+  CustomFieldValue,
+  Comment,
+  Reaction,
+  Attachment,
+  TimeEntry,
+  TaskDependency,
+  Checklist,
+  ChecklistItem,
 } from '@prisma/client';

@@ -43,6 +43,30 @@ enum FavoriteType {
   TASK
 }
 
+enum CustomFieldType {
+  TEXT
+  TEXTAREA
+  NUMBER
+  DATE
+  DATETIME
+  SELECT
+  MULTI_SELECT
+  CHECKBOX
+  PEOPLE
+  URL
+  EMAIL
+  CURRENCY
+  RATING
+  PROGRESS
+}
+
+enum DependencyType {
+  FINISH_TO_START
+  START_TO_START
+  FINISH_TO_FINISH
+  START_TO_FINISH
+}
+
 // ============================================
 // USER
 // ============================================
@@ -65,6 +89,13 @@ model User {
   workspaces    WorkspaceMember[]
   favorites     Favorite[]
   recentItems   RecentItem[]
+
+  // Rich task system relations
+  comments           Comment[]
+  reactions          Reaction[]
+  attachments        Attachment[]
+  timeEntries        TimeEntry[]
+  assignedChecklistItems ChecklistItem[]
 
   @@map("users")
 }
@@ -119,8 +150,10 @@ model Space {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  projects    Project[]
+  workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  projects     Project[]
+  labels       Label[]
+  customFields CustomField[]
 
   @@index([workspaceId])
   @@map("spaces")
@@ -139,11 +172,13 @@ model Project {
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 
-  space       Space           @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  owner       User            @relation("ProjectOwner", fields: [ownerId], references: [id])
-  members     ProjectMember[]
-  taskLists   TaskList[]
-  tasks       Task[]
+  space        Space           @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  owner        User            @relation("ProjectOwner", fields: [ownerId], references: [id])
+  members      ProjectMember[]
+  taskLists    TaskList[]
+  tasks        Task[]
+  labels       Label[]
+  customFields CustomField[]
 
   @@index([spaceId])
   @@index([ownerId])
@@ -192,7 +227,7 @@ model TaskList {
 model Task {
   id          String       @id @default(uuid())
   title       String
-  description String?
+  description String?      @db.Text
   status      TaskStatus   @default(TODO)
   priority    TaskPriority @default(MEDIUM)
   position    Int          @default(0)
@@ -201,6 +236,8 @@ model Task {
   assigneeId  String?
   parentId    String?
   dueDate     DateTime?
+  startDate   DateTime?
+  estimate    Int?
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
@@ -210,11 +247,22 @@ model Task {
   parent      Task?        @relation("Subtasks", fields: [parentId], references: [id], onDelete: Cascade)
   subtasks    Task[]       @relation("Subtasks")
 
+  // Rich task system relations
+  customFieldValues CustomFieldValue[]
+  comments          Comment[]
+  attachments       Attachment[]
+  timeEntries       TimeEntry[]
+  checklists        Checklist[]
+  labels            TaskLabel[]
+  dependentOn       TaskDependency[]   @relation("DependentOn")
+  dependencyOf      TaskDependency[]   @relation("DependencyOf")
+
   @@index([projectId])
   @@index([taskListId])
   @@index([assigneeId])
   @@index([parentId])
   @@index([status])
+  @@index([dueDate])
   @@map("tasks")
 }
 
@@ -253,4 +301,226 @@ model RecentItem {
   @@unique([userId, targetType, targetId])
   @@index([userId, viewedAt])
   @@map("recent_items")
+}
+
+// ============================================
+// LABELS - Categorization tags
+// ============================================
+
+model Label {
+  id        String      @id @default(uuid())
+  name      String
+  color     String
+  spaceId   String?
+  projectId String?
+  createdAt DateTime    @default(now())
+
+  space     Space?      @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  project   Project?    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks     TaskLabel[]
+
+  @@index([spaceId])
+  @@index([projectId])
+  @@map("labels")
+}
+
+model TaskLabel {
+  id        String   @id @default(uuid())
+  taskId    String
+  labelId   String
+  createdAt DateTime @default(now())
+
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  label     Label    @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, labelId])
+  @@index([labelId])
+  @@map("task_labels")
+}
+
+// ============================================
+// CUSTOM FIELDS - Flexible task metadata
+// ============================================
+
+model CustomField {
+  id          String          @id @default(uuid())
+  name        String
+  type        CustomFieldType
+  description String?
+  required    Boolean         @default(false)
+  options     Json?
+  spaceId     String?
+  projectId   String?
+  position    Int             @default(0)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  space       Space?          @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  project     Project?        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  values      CustomFieldValue[]
+
+  @@index([spaceId])
+  @@index([projectId])
+  @@map("custom_fields")
+}
+
+model CustomFieldValue {
+  id            String      @id @default(uuid())
+  taskId        String
+  customFieldId String
+  value         Json
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  task          Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  customField   CustomField @relation(fields: [customFieldId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, customFieldId])
+  @@index([customFieldId])
+  @@map("custom_field_values")
+}
+
+// ============================================
+// COMMENTS - Threaded discussions on tasks
+// ============================================
+
+model Comment {
+  id        String    @id @default(uuid())
+  content   String    @db.Text
+  taskId    String
+  authorId  String
+  parentId  String?
+  isEdited  Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  task      Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("CommentReplies")
+  reactions Reaction[]
+
+  @@index([taskId])
+  @@index([authorId])
+  @@index([parentId])
+  @@map("comments")
+}
+
+model Reaction {
+  id        String   @id @default(uuid())
+  emoji     String
+  commentId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId, emoji])
+  @@index([commentId])
+  @@map("reactions")
+}
+
+// ============================================
+// ATTACHMENTS - File uploads on tasks
+// ============================================
+
+model Attachment {
+  id           String   @id @default(uuid())
+  filename     String
+  originalName String
+  mimeType     String
+  size         Int
+  url          String
+  thumbnailUrl String?
+  taskId       String
+  uploaderId   String?
+  createdAt    DateTime @default(now())
+
+  task         Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  uploader     User?    @relation(fields: [uploaderId], references: [id], onDelete: SetNull)
+
+  @@index([taskId])
+  @@map("attachments")
+}
+
+// ============================================
+// TIME TRACKING - Time entries on tasks
+// ============================================
+
+model TimeEntry {
+  id          String    @id @default(uuid())
+  taskId      String
+  userId      String
+  description String?
+  startTime   DateTime
+  endTime     DateTime?
+  duration    Int?
+  billable    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  task        Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([userId])
+  @@index([startTime])
+  @@map("time_entries")
+}
+
+// ============================================
+// TASK DEPENDENCIES - Workflow relationships
+// ============================================
+
+model TaskDependency {
+  id              String         @id @default(uuid())
+  dependentTaskId String
+  dependsOnTaskId String
+  type            DependencyType @default(FINISH_TO_START)
+  createdAt       DateTime       @default(now())
+
+  dependentTask   Task           @relation("DependentOn", fields: [dependentTaskId], references: [id], onDelete: Cascade)
+  dependsOnTask   Task           @relation("DependencyOf", fields: [dependsOnTaskId], references: [id], onDelete: Cascade)
+
+  @@unique([dependentTaskId, dependsOnTaskId])
+  @@index([dependsOnTaskId])
+  @@map("task_dependencies")
+}
+
+// ============================================
+// CHECKLISTS - Task breakdown items
+// ============================================
+
+model Checklist {
+  id        String          @id @default(uuid())
+  name      String
+  taskId    String
+  position  Int             @default(0)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  task      Task            @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  items     ChecklistItem[]
+
+  @@index([taskId])
+  @@map("checklists")
+}
+
+model ChecklistItem {
+  id          String    @id @default(uuid())
+  content     String
+  isCompleted Boolean   @default(false)
+  checklistId String
+  assigneeId  String?
+  dueDate     DateTime?
+  position    Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  checklist   Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  assignee    User?     @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  @@index([checklistId])
+  @@map("checklist_items")
 }
