@@ -9,6 +9,7 @@
     "dev": "yarn workspaces run dev",
     "dev:api": "yarn workspace @pm/api dev",
     "dev:web": "yarn workspace @pm/web dev",
+    "start-all": "concurrently \"yarn workspace @pm/api dev\" \"yarn workspace @pm/web dev\"",
     "db:generate": "yarn workspace @pm/db generate",
     "db:migrate": "yarn workspace @pm/db migrate:dev",
     "db:studio": "yarn workspace @pm/db studio"

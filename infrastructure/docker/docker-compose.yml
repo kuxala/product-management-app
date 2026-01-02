@@ -1,14 +1,14 @@
-version: '3.8'
 services:
   postgres:
     image: postgres:14-alpine
+    container_name: pm-postgres
     ports:
-      - "5432:5432"
+      - "5433:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
       POSTGRES_DB: projectmgmt
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - pm_postgres_data:/var/lib/postgresql/data
 volumes:
-  postgres_data:
+  pm_postgres_data:
