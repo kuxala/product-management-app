@@ -11,9 +11,55 @@ import {
   SavedFilter,
   FilterCondition,
   CreateFilterDto,
-  QUICK_FILTERS,
   QuickFilterType,
 } from '@pm/shared';
+
+// Quick filter presets (defined locally since shared package is types-only)
+interface QuickFilter {
+  type: QuickFilterType;
+  label: string;
+  conditions: FilterCondition[];
+}
+
+const QUICK_FILTERS: QuickFilter[] = [
+  {
+    type: 'my_tasks',
+    label: 'My Tasks',
+    conditions: [
+      { field: 'assigneeId', operator: 'EQUALS', value: '__CURRENT_USER__' },
+    ],
+  },
+  {
+    type: 'unassigned',
+    label: 'Unassigned',
+    conditions: [{ field: 'assigneeId', operator: 'IS_EMPTY', value: null }],
+  },
+  {
+    type: 'due_today',
+    label: 'Due Today',
+    conditions: [{ field: 'dueDate', operator: 'IS_TODAY', value: null }],
+  },
+  {
+    type: 'due_this_week',
+    label: 'Due This Week',
+    conditions: [{ field: 'dueDate', operator: 'IS_THIS_WEEK', value: null }],
+  },
+  {
+    type: 'overdue',
+    label: 'Overdue',
+    conditions: [{ field: 'dueDate', operator: 'IS_OVERDUE', value: null }],
+  },
+  {
+    type: 'high_priority',
+    label: 'High Priority',
+    conditions: [{ field: 'priority', operator: 'EQUALS', value: 'HIGH' }],
+  },
+  {
+    type: 'no_due_date',
+    label: 'No Due Date',
+    conditions: [{ field: 'dueDate', operator: 'IS_EMPTY', value: null }],
+  },
+];
 
 interface FilterContextType {
   activeFilters: FilterCondition[];

@@ -13,11 +13,40 @@ import {
   ViewConfig,
   CreateViewDto,
   UpdateViewDto,
-  DEFAULT_VIEW_CONFIG,
-  DEFAULT_BOARD_CONFIG,
-  DEFAULT_LIST_CONFIG,
-  DEFAULT_CALENDAR_CONFIG,
+  BoardViewConfig,
+  ListViewConfig,
+  CalendarViewConfig,
 } from '@pm/shared';
+
+// Default configurations (defined locally since shared package is types-only)
+const DEFAULT_LIST_CONFIG: ListViewConfig = {
+  showSubtasks: true,
+  indentSubtasks: true,
+};
+
+const DEFAULT_BOARD_CONFIG: BoardViewConfig = {
+  groupByField: 'status',
+  showSubtasks: false,
+  cardFields: ['priority', 'assignee', 'dueDate'],
+  showEmptyColumns: true,
+  columnOrder: [],
+  collapsedColumns: [],
+};
+
+const DEFAULT_CALENDAR_CONFIG: CalendarViewConfig = {
+  dateField: 'dueDate',
+  defaultView: 'month',
+  showWeekends: true,
+  colorBy: 'priority',
+};
+
+const DEFAULT_VIEW_CONFIG: ViewConfig = {
+  sortBy: [{ field: 'position', direction: 'asc' }],
+  groupBy: 'none',
+  collapsedGroups: [],
+  visibleColumns: ['title', 'status', 'priority', 'assignee', 'dueDate'],
+  columnWidths: {},
+};
 
 interface ViewContextType {
   views: SavedView[];

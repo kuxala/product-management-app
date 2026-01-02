@@ -1,6 +1,22 @@
 import { useState } from 'react';
-import { FilterCondition, FilterField, FilterOperator, QUICK_FILTERS, QuickFilterType } from '@pm/shared';
+import { FilterCondition, FilterField, FilterOperator, QuickFilterType } from '@pm/shared';
 import { FilterChip } from './FilterChip';
+
+// Quick filter presets (defined locally since shared package is types-only)
+interface QuickFilter {
+  type: QuickFilterType;
+  label: string;
+}
+
+const QUICK_FILTERS: QuickFilter[] = [
+  { type: 'my_tasks', label: 'My Tasks' },
+  { type: 'unassigned', label: 'Unassigned' },
+  { type: 'due_today', label: 'Due Today' },
+  { type: 'due_this_week', label: 'Due This Week' },
+  { type: 'overdue', label: 'Overdue' },
+  { type: 'high_priority', label: 'High Priority' },
+  { type: 'no_due_date', label: 'No Due Date' },
+];
 
 interface FilterBarProps {
   activeFilters: FilterCondition[];
