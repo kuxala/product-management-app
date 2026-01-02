@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, ChangeEvent } from 'react';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { useAuth } from '../context/AuthContext';
 import { workspacesApi } from '../api/workspaces';
@@ -11,6 +11,8 @@ import {
   ErrorAlert,
 } from '../components/shared';
 import { MemberListItem, InvitationListItem } from './components/members';
+
+type InputChangeEvent = ChangeEvent<HTMLInputElement | HTMLTextAreaElement>;
 
 export function MembersPage() {
   const { currentWorkspace, isLoading: workspaceLoading } = useWorkspace();
@@ -233,7 +235,7 @@ function InviteModal({
           label="Email Address"
           type="email"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e: InputChangeEvent) => setEmail(e.target.value)}
           required
           placeholder="colleague@company.com"
         />

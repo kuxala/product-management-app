@@ -9,6 +9,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  useDroppable,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -17,6 +18,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Task, TaskListWithTasks, ViewConfig, TaskStatus, TaskPriority } from '@pm/shared';
+import { TaskDetailModal } from './TaskDetailModal';
 
 interface BoardViewProps {
   taskLists: TaskListWithTasks[];
@@ -38,6 +40,7 @@ export function BoardView({
   // viewConfig will be used in future for board customization
   void _viewConfig;
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -86,8 +89,8 @@ export function BoardView({
     let targetListId: string | null = null;
     let targetPosition = 0;
 
-    // Check if over a list directly
-    const overList = taskLists.find((l) => l.id === overId);
+    // Check if over a list directly (including empty lists via droppable id)
+    const overList = taskLists.find((l) => l.id === overId || `droppable-${l.id}` === overId);
     if (overList) {
       targetListId = overList.id;
       targetPosition = overList.tasks.length;
@@ -108,30 +111,62 @@ export function BoardView({
     }
   };
 
-  return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCorners}
-      onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="flex gap-4 overflow-x-auto pb-4">
-        {taskLists.map((list) => (
-          <BoardColumn
-            key={list.id}
-            list={list}
-            onTaskCreate={onTaskCreate}
-            onTaskUpdate={onTaskUpdate}
-            onTaskDelete={onTaskDelete}
-          />
-        ))}
-      </div>
+  const handleTaskClick = (task: Task) => {
+    setSelectedTask(task);
+  };
 
-      <DragOverlay>
-        {activeTask && <BoardCardOverlay task={activeTask} />}
-      </DragOverlay>
-    </DndContext>
+  const handleTaskUpdate = async (taskId: string, data: Partial<Task>) => {
+    await onTaskUpdate(taskId, data);
+    // Update selected task if it's the one being updated
+    if (selectedTask && selectedTask.id === taskId) {
+      setSelectedTask({ ...selectedTask, ...data });
+    }
+  };
+
+  const handleCloseModal = () => {
+    setSelectedTask(null);
+  };
+
+  return (
+    <>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCorners}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="flex gap-4 overflow-x-auto pb-4">
+          {taskLists.map((list) => (
+            <BoardColumn
+              key={list.id}
+              list={list}
+              onTaskCreate={onTaskCreate}
+              onTaskUpdate={handleTaskUpdate}
+              onTaskDelete={onTaskDelete}
+              onTaskClick={handleTaskClick}
+            />
+          ))}
+        </div>
+
+        <DragOverlay>
+          {activeTask && <BoardCardOverlay task={activeTask} />}
+        </DragOverlay>
+      </DndContext>
+
+      {/* Task Detail Modal */}
+      {selectedTask && (
+        <TaskDetailModal
+          task={selectedTask}
+          onClose={handleCloseModal}
+          onUpdate={handleTaskUpdate}
+          onDelete={async () => {
+            await onTaskDelete(selectedTask.id);
+            setSelectedTask(null);
+          }}
+        />
+      )}
+    </>
   );
 }
 
@@ -140,11 +175,17 @@ interface BoardColumnProps {
   onTaskCreate: (listId: string, data: { title: string }) => Promise<void>;
   onTaskUpdate: (taskId: string, data: Partial<Task>) => Promise<void>;
   onTaskDelete: (taskId: string) => Promise<void>;
+  onTaskClick: (task: Task) => void;
 }
 
-function BoardColumn({ list, onTaskCreate, onTaskUpdate, onTaskDelete }: BoardColumnProps) {
+function BoardColumn({ list, onTaskCreate, onTaskUpdate, onTaskDelete, onTaskClick }: BoardColumnProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
+
+  // Make the column droppable even when empty
+  const { setNodeRef, isOver } = useDroppable({
+    id: `droppable-${list.id}`,
+  });
 
   const handleAddTask = async () => {
     if (!newTaskTitle.trim()) return;
@@ -162,22 +203,37 @@ function BoardColumn({ list, onTaskCreate, onTaskUpdate, onTaskDelete }: BoardCo
         <span className="text-sm text-gray-500">{list.tasks.length}</span>
       </div>
 
-      {/* Task List */}
-      <SortableContext
-        items={list.tasks.map((t) => t.id)}
-        strategy={verticalListSortingStrategy}
+      {/* Task List with Droppable zone */}
+      <div
+        ref={setNodeRef}
+        className={`min-h-[100px] rounded-lg transition-colors ${
+          isOver ? 'bg-indigo-50 border-2 border-dashed border-indigo-300' : ''
+        }`}
       >
-        <div className="space-y-2 min-h-[100px]">
-          {list.tasks.map((task) => (
-            <SortableTaskCard
-              key={task.id}
-              task={task}
-              onUpdate={onTaskUpdate}
-              onDelete={onTaskDelete}
-            />
-          ))}
-        </div>
-      </SortableContext>
+        <SortableContext
+          items={list.tasks.map((t) => t.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="space-y-2">
+            {list.tasks.map((task) => (
+              <SortableTaskCard
+                key={task.id}
+                task={task}
+                onUpdate={onTaskUpdate}
+                onDelete={onTaskDelete}
+                onClick={() => onTaskClick(task)}
+              />
+            ))}
+          </div>
+        </SortableContext>
+
+        {/* Empty state hint */}
+        {list.tasks.length === 0 && !isAdding && (
+          <div className="flex items-center justify-center h-[80px] text-sm text-gray-400">
+            Drop tasks here
+          </div>
+        )}
+      </div>
 
       {/* Add Task */}
       {isAdding ? (
@@ -234,9 +290,10 @@ interface SortableTaskCardProps {
   task: Task;
   onUpdate: (taskId: string, data: Partial<Task>) => Promise<void>;
   onDelete: (taskId: string) => Promise<void>;
+  onClick: () => void;
 }
 
-function SortableTaskCard({ task, onUpdate, onDelete }: SortableTaskCardProps) {
+function SortableTaskCard({ task, onUpdate, onDelete, onClick }: SortableTaskCardProps) {
   const {
     attributes,
     listeners,
@@ -258,7 +315,8 @@ function SortableTaskCard({ task, onUpdate, onDelete }: SortableTaskCardProps) {
       style={style}
       {...attributes}
       {...listeners}
-      className="bg-white rounded-lg p-3 shadow-sm border border-gray-200 cursor-grab hover:shadow-md transition-shadow"
+      onClick={onClick}
+      className="bg-white rounded-lg p-3 shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-shadow group"
     >
       <BoardCardContent task={task} onUpdate={onUpdate} onDelete={onDelete} />
     </div>
@@ -282,8 +340,9 @@ interface BoardCardContentProps {
 function BoardCardContent({ task, onUpdate, onDelete }: BoardCardContentProps) {
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleStatusChange = async (status: TaskStatus) => {
-    await onUpdate(task.id, { status });
+  const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    e.stopPropagation();
+    await onUpdate(task.id, { status: e.target.value as TaskStatus });
   };
 
   const handleDelete = async (e: React.MouseEvent) => {
@@ -325,7 +384,7 @@ function BoardCardContent({ task, onUpdate, onDelete }: BoardCardContentProps) {
 
           <select
             value={task.status}
-            onChange={(e) => handleStatusChange(e.target.value as TaskStatus)}
+            onChange={handleStatusChange}
             onClick={(e) => e.stopPropagation()}
             className="text-xs bg-transparent border-0 text-gray-600 cursor-pointer p-0 focus:ring-0"
           >
