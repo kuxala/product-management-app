@@ -12,3 +12,14 @@ export interface UserSummary {
   email: string;
   avatarUrl: string | null;
 }
+
+// Profile DTOs
+export interface UpdateUserProfileDto {
+  name?: string;
+  avatarUrl?: string;
+}
+
+export interface ChangePasswordDto {
+  currentPassword: string;
+  newPassword: string;
+}

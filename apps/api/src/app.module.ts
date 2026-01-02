@@ -20,6 +20,8 @@ import { ChecklistsModule } from './checklists/checklists.module';
 import { CustomFieldsModule } from './custom-fields/custom-fields.module';
 import { ViewsModule } from './views/views.module';
 import { FiltersModule } from './filters/filters.module';
+import { UsersModule } from './users/users.module';
+import { InvitationsModule } from './invitations/invitations.module';
 import { JwtAuthGuard } from './common/jwt-auth.guard';
 
 @Module({
@@ -46,6 +48,8 @@ import { JwtAuthGuard } from './common/jwt-auth.guard';
     CustomFieldsModule,
     ViewsModule,
     FiltersModule,
+    UsersModule,
+    InvitationsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

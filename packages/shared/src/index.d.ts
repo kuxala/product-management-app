@@ -25,3 +25,6 @@ export * from './custom-fields/custom-field.schema';
 // Views and filters
 export * from './views/view.schema';
 export * from './filters/filter.schema';
+
+// Invitations
+export * from './invitations/invitation.schema';

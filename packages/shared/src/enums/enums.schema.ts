@@ -29,3 +29,5 @@ export type DependencyType =
   | 'START_TO_START'
   | 'FINISH_TO_FINISH'
   | 'START_TO_FINISH';
+
+export type InvitationStatus = 'PENDING' | 'ACCEPTED' | 'EXPIRED' | 'CANCELLED';

@@ -75,6 +75,13 @@ enum ViewType {
   TABLE
 }
 
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  CANCELLED
+}
+
 // ============================================
 // USER
 // ============================================
@@ -105,6 +112,9 @@ model User {
   timeEntries        TimeEntry[]
   assignedChecklistItems ChecklistItem[]
 
+  // Invitation relations
+  sentInvitations    Invitation[] @relation("InvitedBy")
+
   @@map("users")
 }
 
@@ -123,6 +133,7 @@ model Workspace {
 
   members     WorkspaceMember[]
   spaces      Space[]
+  invitations Invitation[]
 
   @@index([slug])
   @@map("workspaces")
@@ -583,4 +594,29 @@ model SavedFilter {
   @@index([spaceId])
   @@index([userId])
   @@map("saved_filters")
+}
+
+// ============================================
+// INVITATIONS - Workspace member invitations
+// ============================================
+
+model Invitation {
+  id          String           @id @default(uuid())
+  email       String
+  workspaceId String
+  role        WorkspaceRole    @default(MEMBER)
+  status      InvitationStatus @default(PENDING)
+  invitedById String
+  token       String           @unique @default(uuid())
+  expiresAt   DateTime
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedBy   User             @relation("InvitedBy", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@unique([email, workspaceId, status])
+  @@index([workspaceId])
+  @@index([token])
+  @@map("invitations")
 }

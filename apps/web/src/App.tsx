@@ -6,6 +6,9 @@ import { WorkspacesPage } from './pages/WorkspacesPage';
 import { WorkspaceHomePage } from './pages/WorkspaceHomePage';
 import { SpacePage } from './pages/SpacePage';
 import ProjectPage from './pages/ProjectPage';
+import { SettingsPage } from './pages/SettingsPage';
+import { MembersPage } from './pages/MembersPage';
+import { AcceptInvitationPage } from './pages/AcceptInvitationPage';
 import { AppLayout } from './components/layout/AppLayout';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -30,6 +33,14 @@ export default function App() {
           {/* Public routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route
+            path="/invitations/:token"
+            element={
+              <ProtectedRoute>
+                <AcceptInvitationPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Workspace selection */}
           <Route
@@ -53,8 +64,8 @@ export default function App() {
             <Route index element={<WorkspaceHomePage />} />
             <Route path="s/:spaceId" element={<SpacePage />} />
             <Route path="p/:projectId" element={<ProjectPage />} />
-            <Route path="settings" element={<div className="p-8"><h1 className="text-2xl font-bold">Settings</h1><p className="text-gray-500 mt-2">Workspace settings coming soon...</p></div>} />
-            <Route path="members" element={<div className="p-8"><h1 className="text-2xl font-bold">Members</h1><p className="text-gray-500 mt-2">Member management coming soon...</p></div>} />
+            <Route path="settings" element={<SettingsPage />} />
+            <Route path="members" element={<MembersPage />} />
           </Route>
 
           {/* Legacy route redirects */}
