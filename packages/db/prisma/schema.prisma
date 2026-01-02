@@ -7,63 +7,9 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id              String          @id @default(uuid())
-  email           String          @unique
-  password        String
-  name            String
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  ownedProjects   Project[]       @relation("Owner")
-  memberships     ProjectMember[]
-  assignedTasks   Task[]
-
-  @@map("users")
-}
-
-model Project {
-  id          String          @id @default(uuid())
-  name        String
-  description String?
-  ownerId     String
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  owner       User            @relation("Owner", fields: [ownerId], references: [id])
-  members     ProjectMember[]
-  tasks       Task[]
-
-  @@map("projects")
-}
-
-model ProjectMember {
-  id        String      @id @default(uuid())
-  userId    String
-  projectId String
-  role      ProjectRole @default(MEMBER)
-  joinedAt  DateTime    @default(now())
-  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project   Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, projectId])
-  @@map("project_members")
-}
-
-model Task {
-  id          String       @id @default(uuid())
-  title       String
-  description String?
-  status      TaskStatus   @default(TODO)
-  priority    TaskPriority @default(MEDIUM)
-  projectId   String
-  assigneeId  String?
-  dueDate     DateTime?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  assignee    User?        @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
-
-  @@map("tasks")
-}
+// ============================================
+// ENUMS
+// ============================================
 
 enum ProjectRole {
   OWNER
@@ -80,4 +26,231 @@ enum TaskPriority {
   LOW
   MEDIUM
   HIGH
+}
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+  GUEST
+}
+
+enum FavoriteType {
+  WORKSPACE
+  SPACE
+  PROJECT
+  TASK_LIST
+  TASK
+}
+
+// ============================================
+// USER
+// ============================================
+
+model User {
+  id            String            @id @default(uuid())
+  email         String            @unique
+  password      String
+  name          String
+  avatarUrl     String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  // Project relations (legacy - will be phased out)
+  ownedProjects Project[]         @relation("ProjectOwner")
+  memberships   ProjectMember[]
+  assignedTasks Task[]            @relation("TaskAssignee")
+
+  // Workspace relations
+  workspaces    WorkspaceMember[]
+  favorites     Favorite[]
+  recentItems   RecentItem[]
+
+  @@map("users")
+}
+
+// ============================================
+// WORKSPACE - Top level organization (company/team)
+// ============================================
+
+model Workspace {
+  id          String            @id @default(uuid())
+  name        String
+  slug        String            @unique
+  description String?
+  logoUrl     String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  members     WorkspaceMember[]
+  spaces      Space[]
+
+  @@index([slug])
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  id          String        @id @default(uuid())
+  userId      String
+  workspaceId String
+  role        WorkspaceRole @default(MEMBER)
+  joinedAt    DateTime      @default(now())
+
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+  @@index([workspaceId])
+  @@index([userId])
+  @@map("workspace_members")
+}
+
+// ============================================
+// SPACE - Groups related projects within a workspace
+// ============================================
+
+model Space {
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  color       String    @default("#6366f1")
+  icon        String?
+  workspaceId String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  projects    Project[]
+
+  @@index([workspaceId])
+  @@map("spaces")
+}
+
+// ============================================
+// PROJECT
+// ============================================
+
+model Project {
+  id          String          @id @default(uuid())
+  name        String
+  description String?
+  spaceId     String
+  ownerId     String
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  space       Space           @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  owner       User            @relation("ProjectOwner", fields: [ownerId], references: [id])
+  members     ProjectMember[]
+  taskLists   TaskList[]
+  tasks       Task[]
+
+  @@index([spaceId])
+  @@index([ownerId])
+  @@map("projects")
+}
+
+model ProjectMember {
+  id        String      @id @default(uuid())
+  userId    String
+  projectId String
+  role      ProjectRole @default(MEMBER)
+  joinedAt  DateTime    @default(now())
+
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project   Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+  @@index([projectId])
+  @@index([userId])
+  @@map("project_members")
+}
+
+// ============================================
+// TASK LIST - Groups tasks within a project
+// ============================================
+
+model TaskList {
+  id        String   @id @default(uuid())
+  name      String
+  position  Int      @default(0)
+  projectId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks     Task[]
+
+  @@index([projectId])
+  @@map("task_lists")
+}
+
+// ============================================
+// TASK
+// ============================================
+
+model Task {
+  id          String       @id @default(uuid())
+  title       String
+  description String?
+  status      TaskStatus   @default(TODO)
+  priority    TaskPriority @default(MEDIUM)
+  position    Int          @default(0)
+  projectId   String
+  taskListId  String?
+  assigneeId  String?
+  parentId    String?
+  dueDate     DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  taskList    TaskList?    @relation(fields: [taskListId], references: [id], onDelete: SetNull)
+  assignee    User?        @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  parent      Task?        @relation("Subtasks", fields: [parentId], references: [id], onDelete: Cascade)
+  subtasks    Task[]       @relation("Subtasks")
+
+  @@index([projectId])
+  @@index([taskListId])
+  @@index([assigneeId])
+  @@index([parentId])
+  @@index([status])
+  @@map("tasks")
+}
+
+// ============================================
+// FAVORITES - Quick access to any item
+// ============================================
+
+model Favorite {
+  id         String       @id @default(uuid())
+  userId     String
+  targetType FavoriteType
+  targetId   String
+  position   Int          @default(0)
+  createdAt  DateTime     @default(now())
+
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, targetType, targetId])
+  @@index([userId])
+  @@map("favorites")
+}
+
+// ============================================
+// RECENT ITEMS - Track user's recent activity
+// ============================================
+
+model RecentItem {
+  id         String       @id @default(uuid())
+  userId     String
+  targetType FavoriteType
+  targetId   String
+  viewedAt   DateTime     @default(now())
+
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, targetType, targetId])
+  @@index([userId, viewedAt])
+  @@map("recent_items")
 }
