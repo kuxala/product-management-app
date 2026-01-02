@@ -67,6 +67,14 @@ enum DependencyType {
   START_TO_FINISH
 }
 
+enum ViewType {
+  LIST
+  BOARD
+  CALENDAR
+  TIMELINE
+  TABLE
+}
+
 // ============================================
 // USER
 // ============================================
@@ -154,6 +162,7 @@ model Space {
   projects     Project[]
   labels       Label[]
   customFields CustomField[]
+  savedFilters SavedFilter[]
 
   @@index([workspaceId])
   @@map("spaces")
@@ -179,6 +188,8 @@ model Project {
   tasks        Task[]
   labels       Label[]
   customFields CustomField[]
+  savedViews   SavedView[]
+  savedFilters SavedFilter[]
 
   @@index([spaceId])
   @@index([ownerId])
@@ -523,4 +534,53 @@ model ChecklistItem {
 
   @@index([checklistId])
   @@map("checklist_items")
+}
+
+// ============================================
+// SAVED VIEWS - View configurations per project
+// ============================================
+
+model SavedView {
+  id        String   @id @default(uuid())
+  name      String
+  type      ViewType
+  projectId String
+  userId    String
+  isDefault Boolean  @default(false)
+  isShared  Boolean  @default(false)
+  config    Json     // View-specific configuration (columns, sorting, grouping)
+  filters   Json?    // Active filter conditions for this view
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([userId])
+  @@map("saved_views")
+}
+
+// ============================================
+// SAVED FILTERS - Reusable filter presets
+// ============================================
+
+model SavedFilter {
+  id         String   @id @default(uuid())
+  name       String
+  projectId  String?
+  spaceId    String?
+  userId     String
+  isShared   Boolean  @default(false)
+  conditions Json     // Array of filter conditions
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  project    Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  space      Space?   @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([spaceId])
+  @@index([userId])
+  @@map("saved_filters")
 }

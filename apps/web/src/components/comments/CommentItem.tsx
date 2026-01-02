@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CommentWithReplies, UserSummary } from '@pm/shared';
+import { CommentWithReplies } from '@pm/shared';
 import { commentsApi } from '../../api/comments';
 import { CommentInput } from './CommentInput';
 

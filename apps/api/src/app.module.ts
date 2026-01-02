@@ -18,6 +18,8 @@ import { TimeEntriesModule } from './time-entries/time-entries.module';
 import { DependenciesModule } from './dependencies/dependencies.module';
 import { ChecklistsModule } from './checklists/checklists.module';
 import { CustomFieldsModule } from './custom-fields/custom-fields.module';
+import { ViewsModule } from './views/views.module';
+import { FiltersModule } from './filters/filters.module';
 import { JwtAuthGuard } from './common/jwt-auth.guard';
 
 @Module({
@@ -42,6 +44,8 @@ import { JwtAuthGuard } from './common/jwt-auth.guard';
     DependenciesModule,
     ChecklistsModule,
     CustomFieldsModule,
+    ViewsModule,
+    FiltersModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

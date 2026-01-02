@@ -34,7 +34,7 @@ export function CommentSection({ taskId, currentUserId }: CommentSectionProps) {
   };
 
   const handleReply = async (parentId: string, content: string) => {
-    const reply = await commentsApi.create(taskId, { content, parentId });
+    await commentsApi.create(taskId, { content, parentId });
     // Reload to get proper nesting
     loadComments();
   };

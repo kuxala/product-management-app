@@ -21,3 +21,7 @@ export * from './time-entries/time-entry.schema';
 export * from './dependencies/dependency.schema';
 export * from './checklists/checklist.schema';
 export * from './custom-fields/custom-field.schema';
+
+// Views and filters
+export * from './views/view.schema';
+export * from './filters/filter.schema';

@@ -11,6 +11,7 @@ export {
   FavoriteType,
   CustomFieldType,
   DependencyType,
+  ViewType,
 } from '@prisma/client';
 
 // Export model types
@@ -36,4 +37,9 @@ export type {
   TaskDependency,
   Checklist,
   ChecklistItem,
+  SavedView,
+  SavedFilter,
 } from '@prisma/client';
+
+// Export Prisma namespace for JsonValue type
+export { Prisma } from '@prisma/client';
